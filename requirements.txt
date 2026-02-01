@@ -1,0 +1,18 @@
+# Core Dependencies
+paddleocr>=2.7.0
+paddlepaddle>=2.5.0
+opencv-python>=4.8.0
+rapidfuzz>=3.0.0
+numpy>=1.24.0
+
+# Web Server
+fastapi>=0.100.0
+uvicorn>=0.23.0
+python-multipart>=0.0.6
+
+# Environment Configuration
+python-dotenv>=1.0.0
+
+# Image Processing (additional)
+Pillow>=10.0.0
+
