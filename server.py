@@ -8,7 +8,6 @@ import json
 import logging
 import cv2
 import numpy as np
-from io import BytesIO
 from datetime import datetime
 from typing import Optional
 
@@ -89,6 +88,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+# Mount static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 # Initialize OCR components (lazy loading)
 ocr_components = {}
 
@@ -126,9 +131,14 @@ async def verify_api_key(x_api_key: str = Header(..., alias=API_KEY_HEADER)):
 
 # ============= ENDPOINTS =============
 
-@app.get("/", response_model=dict)
+@app.get("/", response_class=FileResponse)
 async def root():
-    """Root endpoint with API information."""
+    """Root endpoint serving the Frontend UI."""
+    return FileResponse("static/index.html")
+
+@app.get("/api-info", response_model=dict)
+async def api_info():
+    """Old root endpoint with API information."""
     return {
         "name": "Aadhaar OCR API",
         "version": "1.0.0",

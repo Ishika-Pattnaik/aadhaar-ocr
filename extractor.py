@@ -14,20 +14,15 @@ class Extractor:
         Cleans OCR text by fixing common confusions.
         e.g. '1234 567B' -> '1234 5678'
         """
-        # This is a naive character-by-character replacement
-        # It's risky to do globally, so we mostly use it for Number extraction logic
-        # But for general text, we keep it simple.
-        return text.strip()
-
-    def correct_potential_digits(self, text):
-        """Forcefully converts confusing chars to digits."""
         res = ""
         for char in text:
             if char in OCR_CORRECTIONS:
                 res += OCR_CORRECTIONS[char]
             else:
                 res += char
-        return res
+        return res.strip()
+
+
 
     def is_valid_name(self, text):
         """
@@ -100,52 +95,72 @@ class Extractor:
                 all_digits.append((seq, conf))
 
         # Try to find 12-digit combination from collected sequences
-        # Strategy 1: Look for direct 12-digit match
+        # Strategy 1: Look for direct match using Configured Patterns & Cleaning
         for item in ocr_results:
             text = item['text']
             conf = item['conf']
-            variants = [text, self.correct_potential_digits(text)]
             
-            for variant in variants:
-                clean_variant = variant.replace(" ", "")
-                matches = re.findall(r'\b\d{12}\b', clean_variant)
-                
+            # Apply robust cleaning (fixes B->8, O->0 etc)
+            cleaned_text = self.clean_ocr_text(text)
+            
+            # Check against configured Regex Patterns (e.g. "1234 5678 9012")
+            for pattern in AADHAAR_REGEX_PATTERNS:
+                matches = re.findall(pattern, cleaned_text)
                 for match in matches:
-                    # Accept even if Verhoeff fails, but prefer valid ones
-                    is_valid = self.validator.validate_verhoeff(match)
-                    if conf > max_conf:
+                     # Remove spaces for validation
+                    clean_num = match.replace(" ", "")
+                    if len(clean_num) == 12:
+                         is_valid = self.validator.validate_verhoeff(clean_num)
+                         if conf > max_conf:
+                            max_conf = conf
+                            best_candidate = clean_num
+                            best_is_valid = is_valid
+
+            # Fallback: Check for any 12-digit sequence in the cleaned line
+            # This handles cases not strictly matching the regex (e.g. weird spacing)
+            clean_digits_only = cleaned_text.replace(" ", "")
+            matches = re.findall(r'\b\d{12}\b', clean_digits_only)
+            for match in matches:
+                 is_valid = self.validator.validate_verhoeff(match)
+                 # Only update if we haven't found a stronger match or if this has higher confidence
+                 if conf > max_conf: 
                         max_conf = conf
                         best_candidate = match
-                        # Store whether it's valid
                         best_is_valid = is_valid
 
-        # Strategy 2: Combine 4-digit + 8-digit sequences
+        # Strategy 2: Combine 4-digit + 8-digit sequences (with cleaning)
         for i, (seq1, conf1) in enumerate(all_digits):
-            if len(seq1) == 4:
+            seq1_clean = self.clean_ocr_text(seq1) # Clean individual chunks too
+            if len(seq1_clean) == 4 and seq1_clean.isdigit():
                 for j, (seq2, conf2) in enumerate(all_digits):
-                    if i != j and len(seq2) >= 4:
-                        # Try combining: 4 digits + next 8 digits from seq2
-                        combined = seq1 + seq2[:8]
-                        if len(combined) == 12:
+                    if i != j:
+                        seq2_clean = self.clean_ocr_text(seq2)
+                        if len(seq2_clean) >= 8 and seq2_clean[:8].isdigit():
+                            # Try combining: 4 digits + next 8 digits from seq2
+                            combined = seq1_clean + seq2_clean[:8]
+                            if len(combined) == 12:
+                                is_valid = self.validator.validate_verhoeff(combined)
+                                avg_conf = (conf1 + conf2) / 2
+                                if avg_conf > max_conf:
+                                    max_conf = avg_conf
+                                    best_candidate = combined
+                                    best_is_valid = is_valid
+
+        # Strategy 3: Look for 6-digit + 6-digit patterns (with cleaning)
+        for i, (seq1, conf1) in enumerate(all_digits):
+            seq1_clean = self.clean_ocr_text(seq1)
+            if len(seq1_clean) == 6 and seq1_clean.isdigit():
+                for j, (seq2, conf2) in enumerate(all_digits):
+                    if i != j:
+                        seq2_clean = self.clean_ocr_text(seq2)
+                        if len(seq2_clean) == 6 and seq2_clean.isdigit():
+                            combined = seq1_clean + seq2_clean
                             is_valid = self.validator.validate_verhoeff(combined)
                             avg_conf = (conf1 + conf2) / 2
                             if avg_conf > max_conf:
                                 max_conf = avg_conf
                                 best_candidate = combined
                                 best_is_valid = is_valid
-
-        # Strategy 3: Look for 6-digit + 6-digit patterns
-        for i, (seq1, conf1) in enumerate(all_digits):
-            if len(seq1) == 6:
-                for j, (seq2, conf2) in enumerate(all_digits):
-                    if i != j and len(seq2) == 6:
-                        combined = seq1 + seq2
-                        is_valid = self.validator.validate_verhoeff(combined)
-                        avg_conf = (conf1 + conf2) / 2
-                        if avg_conf > max_conf:
-                            max_conf = avg_conf
-                            best_candidate = combined
-                            best_is_valid = is_valid
 
         if best_candidate:
             formatted = f"{best_candidate[:4]} {best_candidate[4:8]} {best_candidate[8:]}"

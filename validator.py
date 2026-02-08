@@ -46,6 +46,21 @@ class Validator:
         
         return c == 0
 
+    def generate_verhoeff_checksum(self, number_str):
+        """
+        Generates the Verhoeff checksum digit for a given number.
+        Uses self.inv table which was previously unused.
+        """
+        if not number_str.isdigit():
+            raise ValueError("Input must be digits")
+        
+        c = 0
+        reversed_num = map(int, reversed(number_str))
+        for i, n in enumerate(reversed_num):
+            c = self.d[c][self.p[(i + 1) % 8][n]]
+            
+        return self.inv[c]
+
     def fuzzy_match_name(self, extracted, target, threshold=80):
         """
         Compares extracted name with target name using fuzzy matching.

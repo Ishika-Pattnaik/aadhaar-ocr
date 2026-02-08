@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aadhaar OCR Extractor</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Aadhaar OCR <span class="accent">Extractor</span></h1>
+            <p>Upload an Aadhaar card image to extract details instantly.</p>
+        </header>
+
+        <main>
+            <div class="upload-section" id="drop-zone">
+                <input type="file" id="file-input" accept="image/*" hidden>
+                <div class="upload-content">
+                    <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <p>Drag & Drop or <span class="clickable" onclick="document.getElementById('file-input').click()">Click to Upload</span></p>
+                    <p class="subtext">Supports JPG, PNG</p>
+                </div>
+            </div>
+
+            <div id="loading" class="hidden">
+                <div class="spinner"></div>
+                <p>Processing image...</p>
+            </div>
+
+            <div id="result-section" class="hidden">
+                <div class="result-grid">
+                    <div class="image-preview-card">
+                        <h3>Uploaded Image</h3>
+                        <div class="image-container">
+                            <img id="preview-image" src="" alt="Uploaded Aadhaar">
+                        </div>
+                    </div>
+                    
+                    <div class="data-card">
+                        <h3>Extracted Details</h3>
+                        <div class="data-row">
+                            <span class="label">Name</span>
+                            <span class="value" id="extracted-name">--</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="label">Aadhaar Number</span>
+                            <span class="value" id="extracted-aadhaar">--</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="label">Confidence</span>
+                            <span class="value" id="confidence-score">--</span>
+                        </div>
+                        
+                        <div class="status-indicators">
+                            <div class="indicator" id="checksum-status">
+                                <span class="dot"></span> Checksum Valid
+                            </div>
+                            <!-- Add more indicators if needed -->
+                        </div>
+
+                        <div class="raw-json-toggle">
+                            <button onclick="toggleJson()">Show Raw JSON</button>
+                        </div>
+                        <pre id="raw-json" class="hidden"></pre>
+                    </div>
+                </div>
+                
+                <button class="reset-btn" onclick="resetUI()">Process Another Image</button>
+            </div>
+            
+            <div id="error-message" class="hidden">
+                <p id="error-text"></p>
+            </div>
+        </main>
+    </div>
+    <script src="/static/script.js"></script>
+</body>
+</html>
